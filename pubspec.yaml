@@ -43,7 +43,12 @@ dependencies:
   uuid: ^4.5.2
   http: ^1.2.1
   google_mobile_ads: ^5.1.0
-  flutter_dotenv: ^6.0.0
+  lottie: ^3.1.0
+  image_picker: ^1.0.7
+  screenshot: ^3.0.0
+  share_plus: ^10.0.0
+  path_provider: ^2.1.2
+
   firebase_core: ^4.4.0
   firebase_auth: ^6.1.4
   google_sign_in: ^6.2.1
@@ -72,8 +77,7 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
-  assets:
-    - .env
+
 
 flutter_launcher_icons:
   android: "launcher_icon"

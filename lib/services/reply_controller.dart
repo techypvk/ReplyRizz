@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'ai_service.dart';
@@ -18,6 +19,7 @@ class ReplyController {
     required BuildContext context,
     required String text,
     required String vibe,
+    Uint8List? imageBytes,
     bool isRegeneration = false,
   }) async {
     final monetization = context.read<MonetizationController>();
@@ -41,6 +43,7 @@ class ReplyController {
           context: context,
           text: text,
           vibe: vibe,
+          imageBytes: imageBytes,
           isRegeneration: isRegeneration,
         );
       }
@@ -126,6 +129,7 @@ class ReplyController {
               context: context,
               text: text,
               vibe: vibe,
+              imageBytes: imageBytes,
               isRegeneration: isRegeneration,
             );
           }
@@ -136,10 +140,15 @@ class ReplyController {
 
     // 3. Call the AI reply generation
     try {
-      final replies = await aiService.generateReplies(text, vibe);
+      final replies = await aiService.generateReplies(
+        text,
+        vibe,
+        imageBytes: imageBytes,
+      );
 
       // 4. Save to history
-      await historyService.saveItem(text, vibe, replies);
+      final historyText = imageBytes != null ? "[Image Upload] $text" : text;
+      await historyService.saveItem(historyText, vibe, replies);
 
       return replies;
     } catch (e) {

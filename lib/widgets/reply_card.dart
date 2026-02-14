@@ -6,12 +6,14 @@ class ReplyCard extends StatelessWidget {
   final String text;
   final int index;
   final VoidCallback onTap;
+  final VoidCallback? onShare;
 
   const ReplyCard({
     super.key,
     required this.text,
     required this.index,
     required this.onTap,
+    this.onShare,
   });
 
   @override
@@ -72,6 +74,8 @@ class ReplyCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 16),
+
+                // Copy Icon
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
@@ -84,6 +88,33 @@ class ReplyCard extends StatelessWidget {
                     size: 20,
                   ),
                 ),
+
+                // Share Icon
+                if (onShare != null) ...[
+                  const SizedBox(width: 8),
+                  InkWell(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      onShare!();
+                    },
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.purpleAccent.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.purpleAccent.withOpacity(0.3),
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.share_rounded,
+                        color: Colors.purpleAccent,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

@@ -1,22 +1,32 @@
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'dart:convert';
+import 'dart:typed_data';
 
 class AIService {
   late final GenerativeModel _model;
 
   AIService() {
-    final apiKey = dotenv.env['AI_KEY'];
-    if (apiKey == null || apiKey.isEmpty) {
-      throw Exception("AI_KEY not found in .env");
+    const apiKey = String.fromEnvironment('API_KEY');
+    if (apiKey.isEmpty) {
+      throw Exception(
+        "API_KEY not found. Please pass it using --dart-define=API_KEY=...",
+      );
     }
+
+    final safetySettings = [
+      SafetySetting(HarmCategory.harassment, HarmBlockThreshold.low),
+      SafetySetting(HarmCategory.hateSpeech, HarmBlockThreshold.low),
+      SafetySetting(HarmCategory.sexuallyExplicit, HarmBlockThreshold.low),
+      SafetySetting(HarmCategory.dangerousContent, HarmBlockThreshold.low),
+    ];
 
     _model = GenerativeModel(
       model: 'gemini-2.5-flash',
       apiKey: apiKey,
+      safetySettings: safetySettings,
       generationConfig: GenerationConfig(
         responseMimeType: 'application/json',
-        temperature: 0.7, // Add some creativity but keep it focused
+        temperature: 0.7,
       ),
       systemInstruction: Content.system('''
         You are an AI reply-generation engine used inside a mobile application.
@@ -37,14 +47,28 @@ class AIService {
     );
   }
 
-  Future<List<String>> generateReplies(String input, String vibe) async {
-    if (input.trim().isEmpty) {
+  Future<List<String>> generateReplies(
+    String input,
+    String vibe, {
+    Uint8List? imageBytes,
+  }) async {
+    if (input.trim().isEmpty && imageBytes == null) {
       throw Exception("Input cannot be empty");
     }
 
     try {
-      final prompt = 'Incoming Message: "$input"\nVibe: "$vibe"';
-      final response = await _model.generateContent([Content.text(prompt)]);
+      final List<Part> parts = [];
+      String promptText = 'Incoming Message: "$input"\nVibe: "$vibe"';
+
+      if (imageBytes != null) {
+        promptText =
+            'Read the last message in this chat and generate 3 $vibe replies based on it.';
+        parts.add(DataPart('image/jpeg', imageBytes));
+      }
+
+      parts.add(TextPart(promptText));
+
+      final response = await _model.generateContent([Content.multi(parts)]);
 
       final text = response.text;
       if (text == null) {

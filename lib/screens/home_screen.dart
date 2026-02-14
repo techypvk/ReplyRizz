@@ -3,7 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
-import 'package:sensors_plus/sensors_plus.dart';
+import '../utils/shake_detector.dart';
+import 'package:lottie/lottie.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:typed_data';
 import '../theme/app_theme.dart';
 import '../widgets/vibe_chip.dart';
 
@@ -87,9 +90,11 @@ class _GeneratorViewState extends State<GeneratorView> {
   bool _isLoading = false;
 
   // Shake
-  StreamSubscription? _accelerometerSubscription;
-  DateTime _lastShakeTime = DateTime.now();
-  static const double _shakeThreshold = 15.0;
+  ShakeDetector? _shakeDetector;
+
+  // Screenshot
+  Uint8List? _selectedImageBytes;
+  final ImagePicker _picker = ImagePicker();
 
   final List<Map<String, String>> _vibes = const [
     {'label': 'Witty', 'emoji': '🧠'},
@@ -109,95 +114,79 @@ class _GeneratorViewState extends State<GeneratorView> {
 
   @override
   void dispose() {
-    _accelerometerSubscription?.cancel();
+    _shakeDetector?.stopListening();
     _textController.dispose();
     _selectedVibe.dispose();
     super.dispose();
   }
 
   void _initShakeDetection() {
-    // Start listening directly
-    _accelerometerSubscription = accelerometerEvents.listen((
-      AccelerometerEvent event,
-    ) {
-      if (!mounted) return;
-      // Check settings dynamically
-      final settings = Provider.of<SettingsService>(context, listen: false);
-      if (!settings.isMagicShakeEnabled) return;
+    _shakeDetector = ShakeDetector.autoStart(
+      onPhoneShake: () {
+        if (!mounted) return;
 
-      final now = DateTime.now();
-      if (now.difference(_lastShakeTime).inMilliseconds < 1500) {
-        return; // Debounce 1.5s
-      }
+        final settings = Provider.of<SettingsService>(context, listen: false);
+        if (!settings.isMagicShakeEnabled) return;
 
-      if (event.x.abs() > _shakeThreshold ||
-          event.y.abs() > _shakeThreshold ||
-          event.z.abs() > _shakeThreshold) {
-        _lastShakeTime = now;
+        // Trigger generation if not loading and has text, OR just fill random prompt?
+        // User request: "When the input field is empty... Shake for a random prompt"
+        // AND "ensure the sensitivity is just right" (ShakeDetector handles this well usually)
 
-        // Trigger generation if not loading and has text
-        if (!_isLoading && _textController.text.trim().isNotEmpty) {
-          debugPrint("Shake Triggered!");
+        if (!_isLoading) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text("✨ Magic Shake Activated!"),
               duration: Duration(milliseconds: 1000),
             ),
           );
-          _generateRizz();
-        } else if (_textController.text.isEmpty) {
-          // Maybe just random vibe shake? Or instruct user?
-          // User req: "Instant Rizz generation OR Try Again with same input"
-          // If empty, can't generate.
+
+          if (_textController.text.isEmpty && _selectedImageBytes == null) {
+            // Random prompts logic
+            final randomPrompts = [
+              "He hasn't texted back in 3 hours.",
+              "She said she's 'just busy'.",
+              "How to ask for a date seamlessly?",
+              "Roast my friend who loves pineapple on pizza.",
+            ];
+            setState(() {
+              _textController.text = (randomPrompts..shuffle()).first;
+            });
+          } else {
+            _generateRizz();
+          }
         }
-      }
-    });
+      },
+      minimumShakeCount: 1,
+      shakeSlopTimeMS: 500,
+      shakeCountResetTime: 3000,
+      shakeThresholdGravity: 2.7,
+    );
   }
 
-  bool _isContentSafe(String text) {
-    // Basic local filter for safety compliance
-    final lowerText = text.toLowerCase();
-    final forbiddenKeywords = [
-      'hate',
-      'kill',
-      'murder',
-      'attack',
-      'stupid',
-      'idiot',
-      'sex',
-      'nude',
-      'naked',
-      'xxx',
-      'porn',
-      'suicide',
-      'die',
-      'ashhole',
-      'bitch',
-    ];
-
-    for (final word in forbiddenKeywords) {
-      if (lowerText.contains(word)) {
-        return false;
+  Future<void> _pickImage() async {
+    try {
+      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+      if (image != null) {
+        final bytes = await image.readAsBytes();
+        setState(() {
+          _selectedImageBytes = bytes;
+          // Clear text if image is selected? Or allow both?
+          // Usually screenshot implies we read from image.
+          // But user said: "Read the last message... and generate... replies"
+        });
       }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Failed to pick image: $e")));
     }
-    return true;
   }
 
   Future<void> _generateRizz() async {
     final text = _textController.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty && _selectedImageBytes == null) return;
 
     if (text.length > 280) return;
-
-    if (!_isContentSafe(text)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Safety Filter: content not suitable for generation.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
 
     setState(() => _isLoading = true);
 
@@ -205,8 +194,9 @@ class _GeneratorViewState extends State<GeneratorView> {
       final vibe = _selectedVibe.value;
       final replies = await ReplyController.generate(
         context: context,
-        text: text,
+        text: text.isEmpty ? "Screenshot Uploaded" : text,
         vibe: vibe,
+        imageBytes: _selectedImageBytes,
       );
 
       if (replies == null) {
@@ -379,60 +369,113 @@ class _GeneratorViewState extends State<GeneratorView> {
                             ),
                             filled: true,
                             fillColor: AppTheme.surface,
-                            suffixIcon: IconButton(
-                              padding: const EdgeInsets.only(right: 12),
-                              icon: const Icon(
-                                Icons.content_paste_rounded,
-                                color: Colors.white54,
-                              ),
-                              onPressed: () async {
-                                final data = await Clipboard.getData(
-                                  Clipboard.kTextPlain,
-                                );
-                                if (data?.text != null) {
-                                  _textController.text = data!.text!;
-                                }
-                              },
-                              tooltip: 'Paste',
+                            suffixIcon: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (_textController.text.isNotEmpty)
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.clear,
+                                      color: Colors.white54,
+                                    ),
+                                    onPressed: () => _textController.clear(),
+                                  ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.image_rounded,
+                                    color: Colors.white54,
+                                  ),
+                                  onPressed: _pickImage,
+                                  tooltip: 'Upload Screenshot',
+                                ),
+                                IconButton(
+                                  padding: const EdgeInsets.only(right: 12),
+                                  icon: const Icon(
+                                    Icons.content_paste_rounded,
+                                    color: Colors.white54,
+                                  ),
+                                  onPressed: () async {
+                                    final data = await Clipboard.getData(
+                                      Clipboard.kTextPlain,
+                                    );
+                                    if (data?.text != null) {
+                                      _textController.text = data!.text!;
+                                    }
+                                  },
+                                  tooltip: 'Paste',
+                                ),
+                              ],
                             ),
                           ),
-                          buildCounter:
-                              (
-                                context, {
-                                required currentLength,
-                                required isFocused,
-                                required maxLength,
-                              }) {
-                                return Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      "Short messages work best...",
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodySmall
-                                          ?.copyWith(
-                                            color: Colors.white38,
-                                            fontSize: 11,
-                                          ),
-                                    ),
-                                    Text(
-                                      "$currentLength/$maxLength",
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodySmall
-                                          ?.copyWith(
-                                            color: Colors.white38,
-                                            fontSize: 11,
-                                          ),
-                                    ),
-                                  ],
-                                );
-                              },
                         ),
                       ),
                     ).animate().fadeIn(delay: 200.ms),
+
+                    // Image Preview
+                    if (_selectedImageBytes != null)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 8,
+                        ),
+                        child: Stack(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.memory(
+                                _selectedImageBytes!,
+                                height: 150,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: CircleAvatar(
+                                backgroundColor: Colors.black54,
+                                child: IconButton(
+                                  icon: const Icon(
+                                    Icons.close,
+                                    color: Colors.white,
+                                  ),
+                                  onPressed: () => setState(
+                                    () => _selectedImageBytes = null,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ).animate().fadeIn(),
+
+                    // Shake Hint (Visible when empty)
+                    if (_textController.text.isEmpty &&
+                        _selectedImageBytes == null)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 8,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.vibration,
+                              color: Colors.white24,
+                              size: 16,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              "Shake device for a random prompt 🎲",
+                              style: TextStyle(
+                                color: Colors.white24,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ).animate().fadeIn(delay: 500.ms),
 
                     // Vibe Selector
                     Padding(
@@ -492,7 +535,9 @@ class _GeneratorViewState extends State<GeneratorView> {
                         valueListenable: _textController,
                         builder: (context, value, _) {
                           final isEnabled =
-                              !_isLoading && value.text.trim().isNotEmpty;
+                              !_isLoading &&
+                              (value.text.trim().isNotEmpty ||
+                                  _selectedImageBytes != null);
                           return SizedBox(
                             width: double.infinity,
                             child: ScaleButton(

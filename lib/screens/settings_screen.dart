@@ -459,7 +459,7 @@ class _PreferencesSection extends StatelessWidget {
           title: const Text('Magic Shake'),
           subtitle: const Text('Shake device to generate result'),
           value: settings.isMagicShakeEnabled,
-          activeColor: theme.colorScheme.primary,
+          activeThumbColor: theme.colorScheme.primary,
           onChanged: (bool value) => settings.toggleMagicShake(value),
         ),
         // Theme Toggle Removed - Enforced Dark Mode
