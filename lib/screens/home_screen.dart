@@ -4,9 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../utils/shake_detector.dart';
-import 'package:lottie/lottie.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:typed_data';
 import '../theme/app_theme.dart';
 import '../widgets/vibe_chip.dart';
 

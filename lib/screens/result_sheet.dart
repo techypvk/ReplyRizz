@@ -3,7 +3,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:reply_rizz/services/history_service.dart';
 import 'package:reply_rizz/services/settings_service.dart';
 import 'package:reply_rizz/services/reply_controller.dart';
 import 'package:sensors_plus/sensors_plus.dart';
@@ -14,7 +13,6 @@ import 'package:screenshot/screenshot.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
-import 'dart:typed_data';
 import '../widgets/rizz_card.dart';
 
 class ResultSheet extends StatefulWidget {
