@@ -523,6 +523,9 @@ class _GeneratorViewState extends State<GeneratorView> {
                         ),
                       ).animate().fadeIn(delay: 500.ms),
 
+                    // Spacer to push bottom content down
+                    const Spacer(),
+
                     // Vibe Selector
                     Padding(
                           padding: const EdgeInsets.only(bottom: 20),
