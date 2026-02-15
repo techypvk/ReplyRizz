@@ -110,7 +110,7 @@ app.post("/generateReply", async (req, res) => {
     5. Output rules:
        - Return ONLY raw JSON. No markdown, no conversation, no introductions.
        - The format must be exactly: { "replies": ["string 1", "string 2", "string 3"] }
-       - Each reply must be shorter than 15 words.
+       - Each reply must be shorter than 280 characters.
        - No emojis unless the vibe implies it.
        - Keep replies natural, human-like, and platform-safe.
 

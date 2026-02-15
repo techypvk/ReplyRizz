@@ -348,104 +348,152 @@ class _GeneratorViewState extends State<GeneratorView> {
                       ),
                     ).animate().fadeIn().slideY(begin: -0.2, end: 0),
 
-                    // Input Field
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: TextField(
-                          controller: _textController,
-                          maxLength: 280,
-                          maxLengthEnforcement: MaxLengthEnforcement.enforced,
-                          maxLines: 10,
-                          minLines: 5,
-                          style: const TextStyle(fontSize: 18, height: 1.5),
-                          decoration: InputDecoration(
-                            hintText: "Paste their text here...",
-                            hintStyle: const TextStyle(
-                              color: Colors.white24,
-                              fontSize: 18,
-                            ),
-                            filled: true,
-                            fillColor: AppTheme.surface,
-                            suffixIcon: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (_textController.text.isNotEmpty)
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.clear,
-                                      color: Colors.white54,
-                                    ),
-                                    onPressed: () => _textController.clear(),
-                                  ),
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.image_rounded,
-                                    color: Colors.white54,
-                                  ),
-                                  onPressed: _pickImage,
-                                  tooltip: 'Upload Screenshot',
-                                ),
-                                IconButton(
-                                  padding: const EdgeInsets.only(right: 12),
-                                  icon: const Icon(
-                                    Icons.content_paste_rounded,
-                                    color: Colors.white54,
-                                  ),
-                                  onPressed: () async {
-                                    final data = await Clipboard.getData(
-                                      Clipboard.kTextPlain,
-                                    );
-                                    if (data?.text != null) {
-                                      _textController.text = data!.text!;
-                                    }
-                                  },
-                                  tooltip: 'Paste',
-                                ),
-                              ],
-                            ),
-                          ),
+                    // Combined Input Area (Text + Image)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: AppTheme.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white10),
                         ),
-                      ),
-                    ).animate().fadeIn(delay: 200.ms),
-
-                    // Image Preview
-                    if (_selectedImageBytes != null)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 8,
-                        ),
-                        child: Stack(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: Image.memory(
-                                _selectedImageBytes!,
-                                height: 150,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
+                            // Text Field
+                            TextField(
+                              controller: _textController,
+                              maxLength: 280,
+                              maxLengthEnforcement:
+                                  MaxLengthEnforcement.enforced,
+                              maxLines: null, // Allow expanding
+                              minLines: 3, // Start smaller if needed, or keep 5
+                              style: const TextStyle(fontSize: 18, height: 1.5),
+                              decoration: InputDecoration(
+                                hintText: "Paste their text here...",
+                                hintStyle: const TextStyle(
+                                  color: Colors.white24,
+                                  fontSize: 18,
+                                ),
+                                filled:
+                                    false, // Removed background color as container handles it
+                                border:
+                                    InputBorder.none, // Remove default border
+                                contentPadding: const EdgeInsets.all(16),
+                                counterText:
+                                    "", // Hide counter inside field if preferred, or keep
+                                prefixIcon: _selectedImageBytes != null
+                                    ? Padding(
+                                        padding: const EdgeInsets.all(8.0),
+                                        child: SizedBox(
+                                          width: 80,
+                                          height: 80,
+                                          child: Stack(
+                                            children: [
+                                              ClipRRect(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                                child: Image.memory(
+                                                  _selectedImageBytes!,
+                                                  width: 80,
+                                                  height: 80,
+                                                  fit: BoxFit.cover,
+                                                ),
+                                              ),
+                                              Positioned(
+                                                top: 2,
+                                                right: 2,
+                                                child: GestureDetector(
+                                                  onTap: () => setState(
+                                                    () => _selectedImageBytes =
+                                                        null,
+                                                  ),
+                                                  child: Container(
+                                                    padding:
+                                                        const EdgeInsets.all(2),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.black54,
+                                                      shape: BoxShape.circle,
+                                                    ),
+                                                    child: const Icon(
+                                                      Icons.close,
+                                                      size: 14,
+                                                      color: Colors.white,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      )
+                                    : null,
+                                suffixIcon: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (_textController.text.isNotEmpty)
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.clear,
+                                          color: Colors.white54,
+                                        ),
+                                        onPressed: () =>
+                                            _textController.clear(),
+                                      ),
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.image_rounded,
+                                        color: Colors.white54,
+                                      ),
+                                      onPressed: _pickImage,
+                                      tooltip: 'Upload Screenshot',
+                                    ),
+                                    IconButton(
+                                      padding: const EdgeInsets.only(right: 12),
+                                      icon: const Icon(
+                                        Icons.content_paste_rounded,
+                                        color: Colors.white54,
+                                      ),
+                                      onPressed: () async {
+                                        final data = await Clipboard.getData(
+                                          Clipboard.kTextPlain,
+                                        );
+                                        if (data?.text != null) {
+                                          _textController.text = data!.text!;
+                                        }
+                                      },
+                                      tooltip: 'Paste',
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                            Positioned(
-                              top: 8,
-                              right: 8,
-                              child: CircleAvatar(
-                                backgroundColor: Colors.black54,
-                                child: IconButton(
-                                  icon: const Icon(
-                                    Icons.close,
-                                    color: Colors.white,
-                                  ),
-                                  onPressed: () => setState(
-                                    () => _selectedImageBytes = null,
-                                  ),
-                                ),
+                            // Character Counter
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                right: 16,
+                                bottom: 8,
+                              ),
+                              child: ValueListenableBuilder<TextEditingValue>(
+                                valueListenable: _textController,
+                                builder: (context, value, _) {
+                                  return Align(
+                                    alignment: Alignment.centerRight,
+                                    child: Text(
+                                      "${value.text.length}/280",
+                                      style: TextStyle(
+                                        color: Colors.white12,
+                                        fontSize: 10,
+                                      ),
+                                    ),
+                                  );
+                                },
                               ),
                             ),
                           ],
                         ),
-                      ).animate().fadeIn(),
+                      ),
+                    ).animate().fadeIn(delay: 200.ms),
 
                     // Shake Hint (Visible when empty)
                     if (_textController.text.isEmpty &&

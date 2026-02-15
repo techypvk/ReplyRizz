@@ -5,7 +5,7 @@ class SettingsService extends ChangeNotifier {
   static const String _keyMagicShake = 'magic_shake_enabled';
   static const String _keyShakeTooltip = 'shake_tooltip_seen';
 
-  bool _isMagicShakeEnabled = false;
+  bool _isMagicShakeEnabled = true;
   bool _hasSeenShakeTooltip = false;
 
   bool get isMagicShakeEnabled => _isMagicShakeEnabled;
@@ -40,7 +40,7 @@ class SettingsService extends ChangeNotifier {
   // loadSettings to load theme too
   Future<void> loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
-    _isMagicShakeEnabled = prefs.getBool(_keyMagicShake) ?? false;
+    _isMagicShakeEnabled = prefs.getBool(_keyMagicShake) ?? true;
     _hasSeenShakeTooltip = prefs.getBool(_keyShakeTooltip) ?? false;
 
     int? themeIndex = prefs.getInt(_keyThemeMode);
